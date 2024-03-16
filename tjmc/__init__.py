@@ -47,15 +47,44 @@ MINECRAFT_COLOR_CODES = {
 }
 
 server_group = "TJMC"
-#tjmc = on_fullmatch(("!tjmc", "！tjmc"), ignorecase=True, priority=10, block=True)
+offline_mode_args = {"-a", "all"}
+unknown_server_info = '''
+{
+  "favicon": "https://patchwiki.biligame.com/images/mc/a/a5/tuovefzxjbi9knmyh1so5m7mamnzwh4.png",
+  "description": {
+    "text": "服务器已离线..."
+  },
+  "online": false,
+  "players": {
+    "online": 0,
+    "max": 0
+  },
+  "display_title": ""
+}
+'''
+unknown_server = json.loads(unknown_server_info)
 tjmc = on_command("tj", aliases={"tjmc"}, priority = 10, block = True)
+
+
+# @tjmc.handle()
+# async def get_server_status(bot: Bot, event: Event, state: T_State):
+#     temp = str(event.get_message()).split()
+#     try:
+#         state["keyword"] = temp[1]
+#     except Exception:
+#         pass
 
 @tjmc.handle()
 async def get_server_status(bot: Bot, event: Event, state: T_State):
+    # 获取指令参数列表，args[0]为指令本身
+    args = str(event.get_message()).split()
+    offline_mode = False
+    if len(args) > 1 and args[1] in offline_mode_args:
+        offline_mode = True
     if isinstance(event, GroupMessageEvent):
         await bot.send_group_msg(group_id=event.group_id, message="正在获取同济MC服务器状态喵")
         try:
-            imgPath = draw_sjmc_info(aio_get_sjmc_info(), server_group)
+            imgPath = draw_sjmc_info(aio_get_sjmc_info(), server_group, offline_mode)
             imgPath = imgPath if os.path.isabs(imgPath) else os.path.join(ROOT_PATH, imgPath)
             with open("data/tmp/tjmc_status_TJMC.png", "rb") as image_file:
                 # 二进制形式，需要转码!
@@ -71,7 +100,7 @@ async def get_server_status(bot: Bot, event: Event, state: T_State):
     elif isinstance(event, PrivateMessageEvent):
         await bot.send_private_msg(user_id=event.user_id, message="正在获取同济MC服务器状态喵")
         try:
-            imgPath = draw_sjmc_info(aio_get_sjmc_info(), server_group)
+            imgPath = draw_sjmc_info(aio_get_sjmc_info(), server_group, offline_mode)
             imgPath = imgPath if os.path.isabs(imgPath) else os.path.join(ROOT_PATH, imgPath)
             with open("data/tmp/tjmc_status_TJMC.png", "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read())
@@ -112,9 +141,15 @@ def get_tjmc_page(addr):
     result = requests.get(url)
     return result.content.decode("raw_unicode_escape")
 
-def draw_sjmc_info(dat, server_group):
-    if server_group == '':
-        server_group = 'MC'
+def draw_sjmc_info(dat1, server_group, offline_mode: bool):
+    # 在线模式
+    if not offline_mode:
+        dat = [res for res in dat1 if res['online']]
+        if len(dat) == 0:
+            dat.append(unknown_server)
+    # 离线模式
+    else:
+        dat = dat1
     j = sum([res['online'] and res['players']['online'] != 0 for res in dat])
     j1 = 0
     FONTS_PATH = 'resources/fonts'
@@ -128,7 +163,10 @@ def draw_sjmc_info(dat, server_group):
     img = Image.new('RGBA', (width, height), (46, 33, 23, 255))
     draw = ImageDraw.Draw(img)
     draw.rectangle((0, 120, width, height - 80), fill=(15, 11, 7, 255))
-    draw.text((width - 140 - draw.textsize(f"{server_group}服务器状态", font=font_mc_xl)[0], 42), f"{server_group}服务器状态", fill=(255, 255, 255, 255), font=font_mc_xl)
+    if offline_mode:
+        draw.text((width - 140 - draw.textsize(f"{server_group}服务器状态", font=font_mc_xl)[0], 42), f"{server_group}服务器状态", fill=(255, 255, 255, 255), font=font_mc_xl)
+    else:
+        draw.text((width - 140 - draw.textsize(f"{server_group}在线服务器状态", font=font_mc_xl)[0], 42), f"{server_group}在线服务器状态", fill=(255, 255, 255, 255), font=font_mc_xl)
     draw.text((width - 120, 36), "LITTLE\nUNIkeEN", fill=(255, 255, 255, 255), font=font_syht_m)
     #draw.text((width - 120, 44), "LITTLE\nUNIkeEN", fill=(255, 255, 255, 255), font=font_syht_m)
 
