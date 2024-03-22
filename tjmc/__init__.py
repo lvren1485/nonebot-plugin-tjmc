@@ -59,7 +59,8 @@ unknown_server_info = '''
     "online": 0,
     "max": 0
   },
-  "display_title": ""
+  "display_title": "",
+  "only_display_first_line": true
 }
 '''
 unknown_server = json.loads(unknown_server_info)
@@ -133,6 +134,8 @@ def aio_get_sjmc_info():
         tmp["display_ip"] = server["ip"]
         tmp["display_title"] = server["title"]
         tmp["display_custom_domain"] = server["display_custom_domain"]
+        tmp["display_custom_title"] = server["display_custom_title"]
+        tmp["only_display_first_line"] = server["only_display_first_line"]
         result.append(tmp)
     return result
 
@@ -198,16 +201,23 @@ def draw_sjmc_info(dat1, server_group, offline_mode: bool):
     for i, res in enumerate(dat):
         fy = 160 + i * 140 + j1 * 31
         if res["online"]:
-            try:
-                title = res['description']
-                if not isinstance(title, str):
-                    title = title['text']
-                title = re.sub(r'§[klmnor]', '', title)
-                title = title.replace('|', ' | ', 1)
-                title = title.replace('\n', '  |  ', 1)
-                title = title.replace('服务器已离线...', '')
-            except:
-                title = 'Unknown Server Name'
+            # 是否显示自定义标题
+            if res["display_custom_title"]:
+                title = title = res["display_title"]
+            else:
+                try:
+                    title = res['description']
+                    if not isinstance(title, str):
+                        title = title['text']
+                    title = re.sub(r'§[klmnor]', '', title)
+                    title = title.replace('|', ' | ', 1)
+                    if res["only_display_first_line"]:
+                        title = title.split('\n')[0]
+                    else:
+                        title = title.replace('\n', '  |  ', 1)
+                    title = title.replace('服务器已离线...', '')
+                except:
+                    title = 'Unknown Server Name'
         else:
             title = res["display_title"]
         draw_colored_title(draw, title, (160, fy), font=font_mc_l)
