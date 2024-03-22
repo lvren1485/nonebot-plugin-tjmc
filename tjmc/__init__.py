@@ -14,7 +14,6 @@ import re
 import os
 from io import BytesIO
 import json
-#import demjson
 import requests
 import aiohttp, asyncio
 
@@ -86,14 +85,12 @@ async def get_server_status(bot: Bot, event: Event, state: T_State):
         await bot.send_group_msg(group_id=event.group_id, message="正在获取同济MC服务器状态喵")
         try:
             imgPath = draw_sjmc_info(aio_get_sjmc_info(), server_group, offline_mode)
-            imgPath = imgPath if os.path.isabs(imgPath) else os.path.join(ROOT_PATH, imgPath)
+            #imgPath = imgPath if os.path.isabs(imgPath) else os.path.join(ROOT_PATH, imgPath)
             with open("data/tmp/tjmc_status_TJMC.png", "rb") as image_file:
                 # 二进制形式，需要转码!
                 encoded_string = base64.b64encode(image_file.read())
             encoded_string = encoded_string.decode("utf-8")
-            #print(encoded_string)
             await bot.send_group_msg(group_id=event.group_id, message=f'[CQ:image,file=base64://{encoded_string}]', auto_escape=False)
-            #await bot.send_group_msg(group_id=event.group_id, message='[CQ:image,file=file:///%s]' % imgPath, auto_escape=False)
         except BaseException as e:
             await bot.send_group_msg(group_id=event.group_id, message="internal error while getting tjmc")
             logger.warning("basic exception in ShowTjmcStatus: {}".format(e))
@@ -102,13 +99,11 @@ async def get_server_status(bot: Bot, event: Event, state: T_State):
         await bot.send_private_msg(user_id=event.user_id, message="正在获取同济MC服务器状态喵")
         try:
             imgPath = draw_sjmc_info(aio_get_sjmc_info(), server_group, offline_mode)
-            imgPath = imgPath if os.path.isabs(imgPath) else os.path.join(ROOT_PATH, imgPath)
+            #imgPath = imgPath if os.path.isabs(imgPath) else os.path.join(ROOT_PATH, imgPath)
             with open("data/tmp/tjmc_status_TJMC.png", "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read())
             encoded_string = encoded_string.decode("utf-8")
-            #print(encoded_string)
             await bot.send_private_msg(user_id=event.user_id, message=f'[CQ:image,file=base64://{encoded_string}]', auto_escape=False)
-            #await bot.send_private_msg(user_id=event.user_id, message='[CQ:image,file=file:///%s]' % imgPath, auto_escape=False)
         except BaseException as e:
             await bot.send_private_msg(user_id=event.user_id, message="internal error while getting tjmc")
             logger.warning("basic exception in ShowTjmcStatus: {}".format(e))
@@ -281,7 +276,7 @@ def draw_sjmc_info(dat1, server_group, offline_mode: bool):
             draw.text((width - 60 - txt_size[0], fy), "offline", fill=red, font=font_mc_m)
             txt_size = draw.textsize("服务器离线", font=font_mc_m)
             draw.text((width - 60 - txt_size[0], fy + 32), "服务器离线", fill=grey, font=font_mc_m)
-    draw.text((60, height - 50), "欢迎加入 TJ-Minecraft 交流群！群号 750669570", fill=white, font=font_mc_m)
+    draw.text((60, height - 50), "欢迎加入同济 Minecraft 交流群！群号 750669570", fill=white, font=font_mc_m)
     save_path = os.path.join(SAVE_TMP_PATH, 'tjmc_status_{}.png'.format(server_group))
     img.save(save_path)
     return save_path
