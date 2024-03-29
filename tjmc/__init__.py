@@ -1,6 +1,6 @@
 from nonebot import get_plugin_config
 from nonebot.log import logger
-from nonebot import on_command, on_fullmatch
+from nonebot import on_command
 from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
 from nonebot.adapters.onebot.v11 import *
@@ -16,6 +16,9 @@ from io import BytesIO
 import json
 import requests
 import aiohttp, asyncio
+import nest_asyncio
+
+#nest_asyncio.apply()
 
 __plugin_meta__ = PluginMetadata(
     name="tjmc",
@@ -63,16 +66,7 @@ unknown_server_info = '''
 }
 '''
 unknown_server = json.loads(unknown_server_info)
-tjmc = on_command("tj", aliases={"tjmc"}, priority = 10, block = True)
-
-
-# @tjmc.handle()
-# async def get_server_status(bot: Bot, event: Event, state: T_State):
-#     temp = str(event.get_message()).split()
-#     try:
-#         state["keyword"] = temp[1]
-#     except Exception:
-#         pass
+tjmc = on_command("tj", aliases={"tjmc", "TJ", "TJMC"}, priority = 10, block = True)
 
 @tjmc.handle()
 async def get_server_status(bot: Bot, event: Event, state: T_State):
@@ -84,7 +78,7 @@ async def get_server_status(bot: Bot, event: Event, state: T_State):
     if isinstance(event, GroupMessageEvent):
         await bot.send_group_msg(group_id=event.group_id, message="正在获取同济MC服务器状态喵")
         try:
-            imgPath = draw_sjmc_info(aio_get_sjmc_info(), server_group, offline_mode)
+            imgPath = draw_tjmc_info(aio_get_tjmc_info(), server_group, offline_mode)
             #imgPath = imgPath if os.path.isabs(imgPath) else os.path.join(ROOT_PATH, imgPath)
             with open("data/tmp/tjmc_status_TJMC.png", "rb") as image_file:
                 # 二进制形式，需要转码!
@@ -98,7 +92,7 @@ async def get_server_status(bot: Bot, event: Event, state: T_State):
     elif isinstance(event, PrivateMessageEvent):
         await bot.send_private_msg(user_id=event.user_id, message="正在获取同济MC服务器状态喵")
         try:
-            imgPath = draw_sjmc_info(aio_get_sjmc_info(), server_group, offline_mode)
+            imgPath = draw_tjmc_info(aio_get_tjmc_info(), server_group, offline_mode)
             #imgPath = imgPath if os.path.isabs(imgPath) else os.path.join(ROOT_PATH, imgPath)
             with open("data/tmp/tjmc_status_TJMC.png", "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read())
@@ -110,28 +104,50 @@ async def get_server_status(bot: Bot, event: Event, state: T_State):
         return "OK"
 
 def fetch_server_list() -> Union[None, Dict[str, Any]]:
-    #url = f"https://mc.sjtu.cn/custom/serverlist/?list={group}"
     file_path = "configs/tjmc_server.json"
     with open(file_path, 'r', encoding="utf-8") as file:
         content = file.read()
-
     server_list = json.loads(content)
     for server in server_list:
         if 'ip' not in server:
             return None
     return server_list
 
-def aio_get_sjmc_info():
+def aio_get_tjmc_info():
+    #print(1111)
+    async def get_page(i, addr):
+        #print(i, addr)
+        #print(2222)
+        url=f"https://mc.sjtu.cn/custom/serverlist/?query={addr}"
+        async with aiohttp.request('GET', url) as req:
+            status = await req.json()
+            return i, status
     server_list = fetch_server_list()
-    result = []
+    loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
+    # fixec
+    nest_asyncio.apply()
+    tasks = [loop.create_task(get_page(i, server['ip'])) for i, server in enumerate(server_list)]
+    result = loop.run_until_complete(asyncio.wait(tasks))
+    loop.close()
+    result = [r.result() for r in result[0]]
+    result = sorted(result, key=lambda x: x[0])
+    result = [r[1] for r in result]
+    #result = []
+    i = 0
     for server in server_list:
-        tmp = json.loads(str(get_tjmc_page(server["ip"])).replace("'", "\""))
+        #print(f"server {i} start process")
+        tmp = result[i]
         tmp["display_ip"] = server["ip"]
         tmp["display_title"] = server["title"]
         tmp["display_custom_domain"] = server["display_custom_domain"]
         tmp["display_custom_title"] = server["display_custom_title"]
         tmp["only_display_first_line"] = server["only_display_first_line"]
-        result.append(tmp)
+        #tmp = json.loads(str(get_tjmc_page(server["ip"])).replace("'", "\""))
+        #result[i] = tmp
+        #print(f"server {i} over")
+        i += 1
+
     return result
 
 def get_tjmc_page(addr):
@@ -139,7 +155,7 @@ def get_tjmc_page(addr):
     result = requests.get(url)
     return result.content.decode("raw_unicode_escape")
 
-def draw_sjmc_info(dat1, server_group, offline_mode: bool):
+def draw_tjmc_info(dat1, server_group, offline_mode: bool):
     # 在线模式
     if not offline_mode:
         dat = [res for res in dat1 if res['online']]
@@ -192,7 +208,7 @@ def draw_sjmc_info(dat1, server_group, offline_mode: bool):
         if not buffer_text or buffer_text.strip() == "":
             buffer_text = "紫晶社：未知服务器"
         draw.text((x, y), buffer_text, fill=current_color, font=font)
-
+    #print("each server start drawing!")
     for i, res in enumerate(dat):
         fy = 160 + i * 140 + j1 * 31
         if res["online"]:
@@ -307,3 +323,4 @@ def decode_image(src) -> Union[None, BytesIO]:
     return BytesIO(base64.urlsafe_b64decode(data))
 
 # ONLY TJMC
+# BY LVREN
